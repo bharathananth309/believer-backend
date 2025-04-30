@@ -1,32 +1,18 @@
 // lambda.ts
-import { ExpressAdapter } from '@nestjs/platform-express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { createServer, proxy } from 'aws-serverless-express';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
 
-let cachedServer;
+const server = express();
 
-async function bootstrapServer() {
-  if (!cachedServer) {
-    const expressApp = express();
-    const adapter = new ExpressAdapter(expressApp);
-    const app = await NestFactory.create(AppModule, adapter);
-
-    app.enableCors({
-      origin: '*',
-      credentials: true,
-    });
-
-    app.setGlobalPrefix('api');
-
-    await app.init();
-    cachedServer = createServer(expressApp);
-  }
-  return cachedServer;
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+  app.enableCors();
+  app.setGlobalPrefix('api');
+  await app.init();
 }
 
-export const handler = async (event, context) => {
-  const server = await bootstrapServer();
-  return proxy(server, event, context, 'PROMISE').promise;
-};
+bootstrap();
+
+export default server;
